@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+
+import hashlib
+import os
+import random
+import shutil
+import sys
+
+class File:
+    '''A class reprensenting a file.
+
+    Exposed members:
+      - dir: str, the directory of the file,
+      - file: str, the name and extension of the file,
+      - hash: str, the hexadecimal MD5 hash of the file.
+
+    hash is guaranteed to stay constant throughout renamings and copies.'''
+
+    @staticmethod
+    def GetHash(path):
+        '''Get the hexadecimal MD5 hash of the file.'''
+        with open(path, 'rb') as f:
+            return hashlib.md5(f.read()).hexdigest()
+
+    def __init__(self, path):
+        self.dir, self.file = os.path.split(path)
+        self.hash = File.GetHash(path)
+
+    def SafeCopy(self, topath):
+        '''Copy this file to another location. Retry if hashes do not match.'''
+        frompath = os.path.join(self.dir, self.file)
+        if frompath == topath:
+            return
+        print("SafeCopy:", frompath, '→', topath)
+        if os.path.isfile(topath):
+            raise FileExistsError(topath)
+
+        shutil.copy2(frompath, topath)
+        tohash = File.GetHash(topath)
+        while self.hash != tohash:
+            print("SafeCopy:", frompath, '→', topath)
+            shutil.copy2(frompath, topath)
+            tohash = File.GetHash(topath)
+
+    def SafeMove(self, topath):
+        '''SafeCopy this file then delete original. This object is altered to
+        represent the new file.'''
+        self.SafeCopy(topath)
+        os.remove(os.path.join(self.dir, self.file))
+        self.dir, self.file = os.path.split(topath)
+
+    def SafeRename(self, toname):
+        '''SafeMove this file to a new name while keeping extension. This object
+        is altered to represent the new file.'''
+        _, ext = os.path.splitext(self.file)
+        self.SafeMove(os.path.join(self.dir, toname + ext))
+
+# To help pylint with scoping
+def main():
+    if 2 <= len(sys.argv):
+        if len(sys.argv) == 2 and os.path.isdir(sys.argv[1]):
+            root = sys.argv[1]
+        else:
+            print('''Usage: {0} [directory]
+            
+Rename all files in <directory> to have random names but keep extensions.
+If not given, <directory> will be the current directory. Will always ignore
+files named `{0}` and directories. All renames are checked and retried if files
+are not identical.'''.format(sys.argv[0]), file=sys.stderr)
+            sys.exit(1)
+    else:
+        root = '.'
+
+    files = list()
+    for d, _, fs in os.walk(root):
+        for f in fs:
+            path = os.path.join(d, f)
+            if path == sys.argv[0]:
+                continue
+            files.append(File(path))
+
+    for f in files:
+        # Normalise all the names, so that they are not taken when moving them
+        # in their final place.
+        f.SafeRename(f.hash)
+
+    random.shuffle(files)
+    for i, f in enumerate(files):
+        f.SafeRename(str(i))
+
+if __name__ == '__main__':
+    main()

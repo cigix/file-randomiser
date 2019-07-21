@@ -1,0 +1,14 @@
+[BASIC]
+
+class-naming-style=PascalCase
+function-naming-style=any
+method-naming-style=PascalCase
+module-naming-style=any
+variable-naming-style=snake_case
+
+good-names=d,f,i
+
+[MESSAGES CONTROL]
+
+enable=all
+disable=misplaced-comparison-constant
