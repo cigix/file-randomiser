@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 numtests=1000
 
 if [ 1 -le $# ]

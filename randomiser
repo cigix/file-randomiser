@@ -1,59 +1,13 @@
 #!/usr/bin/env python3
 
-import hashlib
 import os
 import random
-import shutil
 import sys
 
-class File:
-    '''A class reprensenting a file.
+from FileClass import File
 
-    Exposed members:
-      - dir: str, the directory of the file,
-      - file: str, the name and extension of the file,
-      - hash: str, the hexadecimal MD5 hash of the file.
-
-    hash is guaranteed to stay constant throughout renamings and copies.'''
-
-    @staticmethod
-    def GetHash(path):
-        '''Get the hexadecimal MD5 hash of the file.'''
-        with open(path, 'rb') as f:
-            return hashlib.md5(f.read()).hexdigest()
-
-    def __init__(self, path):
-        self.dir, self.file = os.path.split(path)
-        self.hash = File.GetHash(path)
-
-    def SafeCopy(self, topath):
-        '''Copy this file to another location. Retry if hashes do not match.'''
-        frompath = os.path.join(self.dir, self.file)
-        if frompath == topath:
-            return
-        print("SafeCopy:", frompath, '→', topath)
-        if os.path.isfile(topath):
-            raise FileExistsError(topath)
-
-        shutil.copy2(frompath, topath)
-        tohash = File.GetHash(topath)
-        while self.hash != tohash:
-            print("SafeCopy:", frompath, '→', topath)
-            shutil.copy2(frompath, topath)
-            tohash = File.GetHash(topath)
-
-    def SafeMove(self, topath):
-        '''SafeCopy this file then delete original. This object is altered to
-        represent the new file.'''
-        self.SafeCopy(topath)
-        os.remove(os.path.join(self.dir, self.file))
-        self.dir, self.file = os.path.split(topath)
-
-    def SafeRename(self, toname):
-        '''SafeMove this file to a new name while keeping extension. This object
-        is altered to represent the new file.'''
-        _, ext = os.path.splitext(self.file)
-        self.SafeMove(os.path.join(self.dir, toname + ext))
+# Length of generated filenames, in characters
+FILENAMELENGTH = 8
 
 # To help pylint with scoping
 def main():
@@ -80,13 +34,18 @@ are not identical.'''.format(sys.argv[0]), file=sys.stderr)
             files.append(File(path))
 
     for f in files:
-        # Normalise all the names, so that they are not taken when moving them
-        # in their final place.
-        f.SafeRename(f.hash)
+        while True:
+            try:
+                randnum = random.getrandbits(FILENAMELENGTH * 4)
+                randname = '{:x}'.format(randnum)
+                f.SafeSelfCopy(randname)
+            except FileExistsError:
+                pass
+            else:
+                break # Next file
 
-    random.shuffle(files)
-    for i, f in enumerate(files):
-        f.SafeRename(str(i))
+    for f in files:
+        f.Remove()
 
 if __name__ == '__main__':
     main()
