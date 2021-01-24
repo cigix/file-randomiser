@@ -37,7 +37,7 @@ are not identical.'''.format(sys.argv[0]), file=sys.stderr)
         while True:
             try:
                 randnum = random.getrandbits(FILENAMELENGTH * 4)
-                randname = '{:x}'.format(randnum)
+                randname = '{{:0{}x}}'.format(FILENAMELENGTH).format(randnum)
                 f.SafeSelfCopy(randname)
             except FileExistsError:
                 pass
